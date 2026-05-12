@@ -1,0 +1,239 @@
+{
+  "info": {
+    "name": "FBR Apoio Emocional",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Collection automática para testar a API local sem preencher nada manualmente. Define variáveis e encadeia requests (signup -> me -> criar atendimento -> obter -> atualizar -> listar -> excluir -> logout)."
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080" },
+    { "key": "email", "value": "" },
+    { "key": "password", "value": "123456" },
+    { "key": "nickname", "value": "Testador" },
+    { "key": "userId", "value": "" },
+    { "key": "token", "value": "" },
+    { "key": "atendimentoId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "01 - Health Check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/status"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+              "pm.test('Response ok', function () { var j = pm.response.json(); pm.expect(j.status).to.eql('ok'); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 - Criar conta",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\",\n  \"nickname\": \"{{nickname}}\"\n}"
+        },
+        "url": "{{baseUrl}}/api/auth/signup"
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "// Gera email único e define senha/nickname se não existirem",
+              "var now = Date.now();",
+              "var generated = 'testador.' + now + '@example.com';",
+              "if (!pm.collectionVariables.get('email')) pm.collectionVariables.set('email', generated);",
+              "if (!pm.collectionVariables.get('password')) pm.collectionVariables.set('password', '123456_' + Math.floor(Math.random()*900+100));",
+              "if (!pm.collectionVariables.get('nickname')) pm.collectionVariables.set('nickname', 'Testador_' + now);"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Signup status 201', function () { pm.response.to.have.status(201); });",
+              "var json = pm.response.json();",
+              "if (json && json.user && json.user.id) { pm.collectionVariables.set('userId', json.user.id); }",
+              "// Extrai token do header Set-Cookie",
+              "var setCookie = pm.response.headers.get('set-cookie') || pm.response.headers.get('Set-Cookie');",
+              "if (!setCookie) { var arr = pm.response.headers.all().filter(h=>h.key.toLowerCase()==='set-cookie').map(h=>h.value); setCookie = arr.join('; '); }",
+              "if (setCookie) { var m = setCookie.match(/token=([^;]+)/); if (m) { pm.collectionVariables.set('token', m[1]); } }",
+              "pm.test('Token set', function () { pm.expect(pm.collectionVariables.get('token')).to.not.be.oneOf([null, '', undefined]); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 - Me (dados do usuário)",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Cookie", "value": "token={{token}}" }
+        ],
+        "url": "{{baseUrl}}/api/auth/me"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Me status 200', function () { pm.response.to.have.status(200); });",
+              "var j = pm.response.json();",
+              "pm.test('User id matches', function () { pm.expect(j.user.id).to.eql(pm.collectionVariables.get('userId')); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 - Criar Atendimento",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Cookie", "value": "token={{token}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{ \n  \"descricaoInicial\": \"Atendimento de teste - {{email}}\"\n}"
+        },
+        "url": "{{baseUrl}}/api/atendimento"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Create atendimento 201', function () { pm.response.to.have.status(201); });",
+              "var j = pm.response.json();",
+              "if (j && j.atendimento && j.atendimento.id) { pm.collectionVariables.set('atendimentoId', j.atendimento.id); }",
+              "pm.test('AtendimentoId set', function () { pm.expect(pm.collectionVariables.get('atendimentoId')).to.not.be.oneOf([null, '', undefined]); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 - Obter Atendimento por ID",
+      "request": {
+        "method": "GET",
+        "header": [ { "key": "Cookie", "value": "token={{token}}" } ],
+        "url": "{{baseUrl}}/api/atendimento/{{atendimentoId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Get atendimento 200', function () { pm.response.to.have.status(200); });",
+              "var j = pm.response.json();",
+              "pm.test('Returned id matches', function () { pm.expect(j.id || j.atendimento?.id).to.be.oneOf([pm.collectionVariables.get('atendimentoId')]); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "06 - Atualizar Atendimento",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Cookie", "value": "token={{token}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{ \"status\": \"EM_ANDAMENTO\" }"
+        },
+        "url": "{{baseUrl}}/api/atendimento/{{atendimentoId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Patch status 200', function () { pm.response.to.have.status(200); });",
+              "var j = pm.response.json();",
+              "// API retorna o objeto atualizado; pode ser array ou objeto dependendo do ORM",
+              "var id = (Array.isArray(j) ? j[0]?.id : j.id) || j[0]?.id || j.atendimento?.id;",
+              "pm.test('Patch returned object', function () { pm.expect(id).to.eql(pm.collectionVariables.get('atendimentoId')); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "07 - Listar Atendimentos",
+      "request": {
+        "method": "GET",
+        "header": [ { "key": "Cookie", "value": "token={{token}}" } ],
+        "url": "{{baseUrl}}/api/atendimento"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('List atendimentos 200', function () { pm.response.to.have.status(200); });",
+              "var j = pm.response.json();",
+              "pm.test('List is array', function () { pm.expect(Array.isArray(j)).to.be.true; });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "08 - Excluir Atendimento",
+      "request": {
+        "method": "DELETE",
+        "header": [ { "key": "Cookie", "value": "token={{token}}" } ],
+        "url": "{{baseUrl}}/api/atendimento/{{atendimentoId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Delete status 204', function () { pm.response.to.have.status(204); });",
+              "pm.collectionVariables.unset('atendimentoId');"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "09 - Logout",
+      "request": {
+        "method": "POST",
+        "header": [ { "key": "Cookie", "value": "token={{token}}" } ],
+        "url": "{{baseUrl}}/api/auth/logout"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Logout 200', function () { pm.response.to.have.status(200); });",
+              "pm.collectionVariables.unset('token');",
+              "pm.collectionVariables.unset('userId');"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
