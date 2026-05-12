@@ -17,7 +17,6 @@ const {
   signupResponseSchema,
   loginBodySchema,
   loginResponseSchema,
-  logoutBodySchema,
   logoutResponseSchema,
 } = schemas;
 
@@ -93,7 +92,6 @@ export async function authRoutes(app: FastifyInstance) {
         tags: ["Auth"],
         summary: "Logout",
         description: "Deslogar o usuário",
-        body: logoutBodySchema,
         response: logoutResponseSchema,
       },
     },

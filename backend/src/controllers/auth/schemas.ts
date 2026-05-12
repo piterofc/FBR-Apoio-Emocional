@@ -85,8 +85,6 @@ export const loginResponseSchema = {
   }),
 }
 
-export const logoutBodySchema = z.object({}).optional()
-
 export const logoutResponseSchema = {
   200: z.object({
     message: z.string(),
