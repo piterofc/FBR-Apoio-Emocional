@@ -11,6 +11,7 @@ import {
 } from 'fastify-type-provider-zod'
 
 import { rotas } from './routes/index'
+import { startConsumers } from './services/eventConsumer'
 
 const app = fastify().withTypeProvider<ZodTypeProvider>()
 
@@ -50,6 +51,11 @@ async function start() {
 
     console.log('🔥 HTTP server running on http://localhost:8080')
     console.log('📘 API docs available at http://localhost:8080/docs')
+
+    // Inicia consumidores de eventos no mesmo processo
+    void startConsumers().catch((err) => {
+      console.error('🚨 Falha ao iniciar consumidor de eventos', err)
+    })
   } catch (err) {
     console.error('🚨 Failed to start server', err)
     process.exit(1)
