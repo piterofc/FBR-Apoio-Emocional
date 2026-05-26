@@ -18,11 +18,14 @@ Esse evento acontece após a modificação de status de um atendimento pela rota
 
 ```json
 {
-  "atendimentoId": UUID,
-  "status": "atendido",
-  "apoiadorId": UUID,
-  "data": "2026-05-25T21:00:00.000Z"
+  "payload": {    
+    "atendimentoId": "UUID",
+    "status": "atendido",
+    "apoiadorId": "UUID",
+    "data": "2026-05-25T21:00:00.000Z"
+  }
 }
+
 ```
 
 ## Evento 2 - Envio de Mensagens
@@ -41,9 +44,11 @@ Esse evento acontece após o envio de uma mensagem em um atendimento pela rota `
 
 ```json
 {
-  "atendimentoId": UUID,
-  "userId": UUID,
-  "data": "2026-05-25T21:00:00.000Z",
-  "mensagem": "Olá!"
+  "payload": {
+    "atendimentoId": "UUID",
+    "userId": "UUID",
+    "data": "2026-05-25T21:00:00.000Z",
+    "mensagem": "Olá!"
+  }
 }
 ```
