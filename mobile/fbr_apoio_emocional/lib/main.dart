@@ -12,6 +12,7 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final api = ApiService();
     return MaterialApp(
       title: 'FBR Apoio Emocional',
       theme: ThemeData(
@@ -19,8 +20,8 @@ class MyApp extends StatelessWidget {
       ),
       initialRoute: '/',
       routes: {
-        '/': (context) => LoginPage(api: ApiService()),
-        '/atendimentos': (context) => AtendimentosPage(api: ApiService()),
+        '/': (context) => LoginPage(api: api),
+        '/atendimentos': (context) => AtendimentosPage(api: api),
       },
     );
   }
