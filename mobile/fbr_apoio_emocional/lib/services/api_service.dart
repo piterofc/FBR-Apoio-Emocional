@@ -155,12 +155,13 @@ class ApiService {
 
     final res = await http.patch(url, headers: _headers(token), body: jsonEncode(payload));
 
-    final body = jsonDecode(res.body);
-    if (res.statusCode == 200) {
+    final body = res.body.isNotEmpty ? jsonDecode(res.body) : {};
+    // aceitar 200 ou 202 (queued)
+    if (res.statusCode == 200 || res.statusCode == 202) {
       return body as Map<String, dynamic>;
     }
 
-    throw Exception(body['message'] ?? 'Failed to update atendimento');
+    throw Exception((body is Map && body['message']) != null ? body['message'] : 'Failed to update atendimento');
   }
 
   Future<void> excluirAtendimento(String id) async {
@@ -174,5 +175,18 @@ class ApiService {
 
     final body = jsonDecode(res.body);
     throw Exception(body['message'] ?? 'Failed to delete atendimento');
+  }
+
+  Future<Map<String, dynamic>> getMe() async {
+    final token = await getToken();
+    final url = Uri.parse('$baseUrl/api/auth/me');
+    final res = await http.get(url, headers: _headers(token));
+    // ignore: avoid_print
+    print('[ApiService] getMe status=${res.statusCode} body=${res.body} headers=${res.headers}');
+    final body = jsonDecode(res.body);
+    if (res.statusCode == 200) {
+      return body as Map<String, dynamic>;
+    }
+    throw Exception(body['message'] ?? 'Failed to get user');
   }
 }

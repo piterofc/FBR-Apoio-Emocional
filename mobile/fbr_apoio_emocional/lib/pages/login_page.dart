@@ -18,8 +18,15 @@ class _LoginPageState extends State<LoginPage> {
     setState(() => _loading = true);
     try {
       await widget.api.login(_emailController.text, _passwordController.text);
+      // após login, buscar user e roteamento por role
+      final me = await widget.api.getMe();
+      final role = me['user']?['role']?.toString();
       if (!mounted) return;
-      Navigator.pushReplacementNamed(context, '/atendimentos');
+      if (role == 'APOIADOR') {
+        Navigator.pushReplacementNamed(context, '/apoiador');
+      } else {
+        Navigator.pushReplacementNamed(context, '/client');
+      }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
     } finally {
@@ -31,8 +38,14 @@ class _LoginPageState extends State<LoginPage> {
     setState(() => _loading = true);
     try {
       await widget.api.signup(_emailController.text, _passwordController.text, 'mobile');
+      final me = await widget.api.getMe();
+      final role = me['user']?['role']?.toString();
       if (!mounted) return;
-      Navigator.pushReplacementNamed(context, '/atendimentos');
+      if (role == 'APOIADOR') {
+        Navigator.pushReplacementNamed(context, '/apoiador');
+      } else {
+        Navigator.pushReplacementNamed(context, '/client');
+      }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
     } finally {

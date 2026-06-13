@@ -32,25 +32,24 @@ export async function authRoutes(app: FastifyInstance) {
         response: meResponseSchema,
       },
       preHandler: async (request, reply) => {
-        const token = request.cookies.token;
+        // aceitar token via cookie ou Authorization header
+        let token = request.cookies?.token as string | undefined;
+        if (!token) {
+          const authHeader = (request.headers as any).authorization || (request.headers as any).Authorization;
+          if (typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
+            token = authHeader.split(' ')[1];
+          }
+        }
 
         if (!token) {
-          return reply.status(401).send({
-            message: "Unauthorized",
-          });
+          return reply.status(401).send({ message: 'Unauthorized' });
         }
 
         try {
-          const decoded = jwt.verify(token, env.JWT_SECRET || "") as {
-            userId: string;
-          };
-          request.user = {
-            id: decoded.userId,
-          };
+          const decoded = jwt.verify(token, env.JWT_SECRET || '') as { userId: string };
+          request.user = { id: decoded.userId };
         } catch (err) {
-          return reply.status(401).send({
-            message: "Unauthorized",
-          });
+          return reply.status(401).send({ message: 'Unauthorized' });
         }
       },
     },
