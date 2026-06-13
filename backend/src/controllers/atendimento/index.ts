@@ -3,6 +3,7 @@ import { atendimentos } from '../../db/schema/atendimento'
 
 import { eq } from 'drizzle-orm'
 import publishEvent from '@/services/eventProducer'
+import { mensagens } from '@/db/schema/mensagem'
 import type { FastifyReply, FastifyRequest } from 'fastify'
 
 export async function listarAtendimentos(req: FastifyRequest, reply: FastifyReply) {
@@ -121,5 +122,25 @@ export async function excluirAtendimento(req: FastifyRequest, reply: FastifyRepl
     } catch (error) {
         console.error(error)
         return reply.status(500).send({ message: "Erro ao excluir atendimento" })
+    }
+}
+
+export async function listarMensagens(req: FastifyRequest, reply: FastifyReply) {
+    try {
+        const { id } = req.params as { id: string }
+        const msgs = await db.query.mensagens.findMany({
+            where: (m) => eq(m.atendimentoId, id),
+            columns: {
+                id: true,
+                atendimentoId: true,
+                userId: true,
+                mensagem: true,
+                createdAt: true,
+            },
+        })
+        return reply.status(200).send(msgs)
+    } catch (error) {
+        console.error(error)
+        return reply.status(500).send({ message: "Erro ao listar mensagens" })
     }
 }

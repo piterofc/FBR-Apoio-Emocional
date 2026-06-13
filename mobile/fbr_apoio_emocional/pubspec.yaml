@@ -36,6 +36,7 @@ dependencies:
   cupertino_icons: ^1.0.8
   http: ^0.13.6
   flutter_secure_storage: ^8.0.0
+  web_socket_channel: ^2.4.0
 
 dev_dependencies:
   flutter_test:

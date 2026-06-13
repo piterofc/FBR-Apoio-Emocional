@@ -189,4 +189,35 @@ class ApiService {
     }
     throw Exception(body['message'] ?? 'Failed to get user');
   }
+
+  Future<List<dynamic>> fetchMessages(String atendimentoId) async {
+    final token = await getToken();
+    final url = Uri.parse('$baseUrl/api/atendimento/$atendimentoId/mensagens');
+    final res = await http.get(url, headers: _headers(token));
+    if (res.statusCode == 200) {
+      final body = jsonDecode(res.body);
+      return body as List<dynamic>;
+    }
+    final body = res.body.isNotEmpty ? jsonDecode(res.body) : {};
+    throw Exception(body['message'] ?? 'Failed to fetch messages');
+  }
+
+  Future<void> sendChatMessage(String atendimentoId, String mensagem) async {
+    final token = await getToken();
+    final url = Uri.parse('$baseUrl/api/eventos/chat');
+    final me = await getMe();
+    final userId = me['user']?['id']?.toString();
+    final payload = {
+      'payload': {
+        'atendimentoId': atendimentoId,
+        'userId': userId,
+        'data': DateTime.now().toIso8601String(),
+        'mensagem': mensagem,
+      }
+    };
+    final res = await http.post(url, headers: _headers(token), body: jsonEncode(payload));
+    if (res.statusCode == 202) return;
+    final body = res.body.isNotEmpty ? jsonDecode(res.body) : {};
+    throw Exception(body['message'] ?? 'Failed to send message');
+  }
 }

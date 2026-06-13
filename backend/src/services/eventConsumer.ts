@@ -11,57 +11,105 @@ export async function startConsumers() {
 
   await ch.assertQueue(STATUS_QUEUE, { durable: true })
   await ch.assertQueue(CHAT_QUEUE, { durable: true })
-
   console.log('📥 Consumidor aguardando mensagens na fila', STATUS_QUEUE)
   console.log('📥 Consumidor aguardando mensagens na fila', CHAT_QUEUE)
 
-  ch.consume(STATUS_QUEUE, async (msg: any) => {
+  // allow concurrent message processing (tune as needed)
+  try {
+    ch.prefetch(10)
+  } catch (err) {
+    // ignore if channel doesn't support prefetch
+  }
+
+  ch.consume(STATUS_QUEUE, (msg: any) => {
     if (!msg) return
 
-    try {
-      const content = msg.content.toString()
-      const parsed = JSON.parse(content)
-      const payload = parsed.payload || parsed
-      console.log('✅ Status recebido:', payload)
+    // process in a detached async task to allow concurrent messages
+    void (async () => {
+      try {
+        const content = msg.content.toString()
+        const parsed = JSON.parse(content)
+        const payload = parsed.payload || parsed
+        console.log('✅ Status recebido:', payload)
 
-      const atendimentoId = payload.atendimentoId
-      const status = payload.status
-      const apoiadorId = payload.apoiadorId ?? null
+        const atendimentoId = payload.atendimentoId
+        const status = payload.status
+        const apoiadorId = payload.apoiadorId ?? null
 
-      if (!atendimentoId) {
-        throw new Error('Payload missing atendimentoId')
+        if (!atendimentoId) {
+          throw new Error('Payload missing atendimentoId')
+        }
+
+        // Atualizar o atendimento no banco
+        const updates: any = { status }
+        if (apoiadorId) updates.apoiadorId = apoiadorId
+
+        await db.update(atendimentos).set(updates).where(eq(atendimentos.id, atendimentoId))
+
+        console.log('🔁 Processamento de status concluído para:', atendimentoId)
+        ch.ack(msg)
+      } catch (err) {
+        console.error('❌ Erro ao processar mensagem', err)
+        try {
+          ch.nack(msg, false, false)
+        } catch (e) {
+          // ignore
+        }
       }
-
-      // Atualizar o atendimento no banco
-      const updates: any = { status }
-      if (apoiadorId) updates.apoiadorId = apoiadorId
-
-      await db.update(atendimentos).set(updates).where(eq(atendimentos.id, atendimentoId))
-
-      console.log('🔁 Processamento de status concluído para:', atendimentoId)
-      ch.ack(msg)
-    } catch (err) {
-      console.error('❌ Erro ao processar mensagem', err)
-      ch.nack(msg, false, false)
-    }
+    })()
   })
 
-  ch.consume(CHAT_QUEUE, async (msg: any) => {
+  ch.consume(CHAT_QUEUE, (msg: any) => {
     if (!msg) return
 
-    try {
-      const content = msg.content.toString()
-      const payload = JSON.parse(content)
-      console.log('💬 Mensagem de chat recebida:', payload)
+    void (async () => {
+      try {
+        const content = msg.content.toString()
+        const parsed = JSON.parse(content)
+        const payload = parsed.payload || parsed
+        console.log('💬 Mensagem de chat recebida:', payload)
 
-      // await new Promise((res) => setTimeout(res, 1500))
-      // Executar ação
+        const atendimentoId = payload.atendimentoId
+        const userId = payload.userId
+        const mensagem = payload.mensagem || payload.text || payload.message
+        const data = payload.data ? new Date(payload.data) : new Date()
 
-      console.log('🔁 Processamento de chat concluído para:', payload)
-      ch.ack(msg)
-    } catch (err) {
-      console.error('❌ Erro ao processar mensagem de chat', err)
-      ch.nack(msg, false, false)
-    }
+        if (!atendimentoId || !userId || !mensagem) {
+          throw new Error('Payload de chat incompleto')
+        }
+
+        const result = await db.insert((await import('@/db/schema/mensagem')).mensagens).values({
+          atendimentoId: atendimentoId,
+          userId: userId,
+          mensagem: mensagem,
+          createdAt: data,
+        }).returning()
+
+        // Broadcast to connected websocket clients
+        try {
+          const { broadcastToRoom } = await import('@/services/ws')
+          const inserted = result[0]
+          broadcastToRoom(atendimentoId, {
+            id: inserted.id,
+            atendimentoId: inserted.atendimentoId,
+            userId: inserted.userId,
+            mensagem: inserted.mensagem,
+            createdAt: inserted.createdAt,
+          })
+        } catch (err) {
+          console.error('❌ Erro ao broadcast de mensagem via websocket', err)
+        }
+
+        console.log('🔁 Processamento de chat concluído para atendimento:', atendimentoId)
+        ch.ack(msg)
+      } catch (err) {
+        console.error('❌ Erro ao processar mensagem de chat', err)
+        try {
+          ch.nack(msg, false, false)
+        } catch (e) {
+          // ignore
+        }
+      }
+    })()
   })
 }

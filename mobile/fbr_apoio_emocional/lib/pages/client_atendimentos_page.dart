@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import 'create_atendimento_page.dart';
+import 'chat_page.dart';
 
 class ClientAtendimentosPage extends StatefulWidget {
   final ApiService api;
@@ -76,6 +77,7 @@ class _ClientAtendimentosPageState extends State<ClientAtendimentosPage> {
                         return ListTile(
                           title: Text('Atendimento ${item['id'] ?? ''}'),
                           subtitle: Text('Status: ${item['status'] ?? ''}'),
+                          onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ChatPage(api: widget.api, atendimentoId: item['id'].toString()))),
                         );
                       },
                     ),

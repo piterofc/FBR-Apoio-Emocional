@@ -6,7 +6,8 @@ import {
   obterAtendimento,
   criarAtendimento,
   atualizarAtendimento,
-  excluirAtendimento
+  excluirAtendimento,
+  listarMensagens,
 } from "../../controllers/atendimento/index";
 
 import * as schemas from "../../controllers/atendimento/schemas";
@@ -54,6 +55,18 @@ export async function atendimentoRoutes(app: FastifyInstance) {
       },
     },
     obterAtendimento,
+  );
+
+  appWithZod.get(
+    "/:id/mensagens",
+    {
+      schema: {
+        tags: ["Atendimento"],
+        summary: "Obter histórico de mensagens",
+        description: "Retorna o histórico de mensagens de um atendimento.",
+      },
+    },
+    listarMensagens,
   );
 
   appWithZod.post(
