@@ -3,7 +3,15 @@ import jwt from 'jsonwebtoken'
 import { env } from '@/env.ts'
 
 export async function authenticate(request: FastifyRequest, reply: FastifyReply) {
-  const token = request.cookies?.token
+  let token = request.cookies?.token as string | undefined
+
+  // Aceitar Authorization header para clientes mobile: "Bearer <token>"
+  if (!token) {
+    const authHeader = (request.headers as any).authorization || (request.headers as any).Authorization
+    if (typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
+      token = authHeader.split(' ')[1]
+    }
+  }
 
   if (!token) {
     return reply.status(401).send({ message: 'Unauthorized' })

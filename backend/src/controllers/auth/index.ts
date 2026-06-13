@@ -76,14 +76,15 @@ export async function signup(req: FastifyRequest, reply: FastifyReply) {
             nickname,
         }).returning()
 
-        // Login
-        gerarTokenSetarCookie(newUser[0].id, reply)
+        // Login (set cookie) e retornar token para clients não-browser
+        const token = gerarTokenSetarCookie(newUser[0].id, reply)
 
         const { password: _, ...userData } = newUser[0] // Excluindo a senha da resposta
 
         return reply.status(201).send({
             message: 'User created successfully',
             user: userData,
+            token,
         })
     } catch (err) {
         console.error('Error in signup:', err)
@@ -124,14 +125,15 @@ export async function login(req: FastifyRequest, reply: FastifyReply) {
             })
         }
 
-        // Login
-        gerarTokenSetarCookie(user.id, reply)
+        // Login (set cookie) e retornar token para clients não-browser
+        const token = gerarTokenSetarCookie(user.id, reply)
 
         const { password: _, ...userData } = user // Excluindo a senha da resposta
 
         return reply.status(200).send({
             message: 'Login successful',
             user: userData,
+            token,
         })
     } catch (err) {
         console.error('Error in login:', err)
