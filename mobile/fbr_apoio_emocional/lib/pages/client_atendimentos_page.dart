@@ -74,10 +74,17 @@ class _ClientAtendimentosPageState extends State<ClientAtendimentosPage> {
                       itemCount: _items.length,
                       itemBuilder: (context, index) {
                         final item = _items[index] as Map<String, dynamic>;
+                        final status = item['status']?.toString();
                         return ListTile(
                           title: Text('Atendimento ${item['id'] ?? ''}'),
                           subtitle: Text('Status: ${item['status'] ?? ''}'),
-                          onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ChatPage(api: widget.api, atendimentoId: item['id'].toString()))),
+                          onTap: () {
+                            if (status == 'EM_ANDAMENTO' || status == 'CONCLUIDO') {
+                              Navigator.of(context).push(MaterialPageRoute(builder: (_) => ChatPage(api: widget.api, atendimentoId: item['id'].toString())));
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('O chat só pode ser aberto quando o atendimento estiver em andamento ou encerrado.')));
+                            }
+                          },
                         );
                       },
                     ),

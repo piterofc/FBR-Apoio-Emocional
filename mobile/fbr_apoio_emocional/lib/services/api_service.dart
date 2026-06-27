@@ -161,7 +161,10 @@ class ApiService {
       return body as Map<String, dynamic>;
     }
 
-    throw Exception((body is Map && body['message']) != null ? body['message'] : 'Failed to update atendimento');
+    final message = body is Map<String, dynamic> && body['message'] != null
+        ? body['message'].toString()
+        : 'Failed to update atendimento';
+    throw Exception(message);
   }
 
   Future<void> excluirAtendimento(String id) async {
@@ -190,6 +193,20 @@ class ApiService {
     throw Exception(body['message'] ?? 'Failed to get user');
   }
 
+  Future<Map<String, dynamic>> getAtendimento(String id) async {
+    final token = await getToken();
+    final url = Uri.parse('$baseUrl/api/atendimento/$id');
+    final res = await http.get(url, headers: _headers(token));
+    final body = res.body.isNotEmpty ? jsonDecode(res.body) : {};
+    if (res.statusCode == 200) {
+      return body as Map<String, dynamic>;
+    }
+    final message = body is Map<String, dynamic> && body['message'] != null
+        ? body['message'].toString()
+        : 'Failed to get atendimento';
+    throw Exception(message);
+  }
+
   Future<List<dynamic>> fetchMessages(String atendimentoId) async {
     final token = await getToken();
     final url = Uri.parse('$baseUrl/api/atendimento/$atendimentoId/mensagens');
@@ -207,6 +224,11 @@ class ApiService {
     final url = Uri.parse('$baseUrl/api/eventos/chat');
     final me = await getMe();
     final userId = me['user']?['id']?.toString();
+    final atendimento = await getAtendimento(atendimentoId);
+    final status = atendimento['status']?.toString();
+    if (status != 'EM_ANDAMENTO') {
+      throw Exception('Mensagens só podem ser enviadas quando o atendimento estiver em andamento');
+    }
     final payload = {
       'payload': {
         'atendimentoId': atendimentoId,

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import 'chat_page.dart';
 
 class ApoiadorAtendimentosPage extends StatefulWidget {
   final ApiService api;
@@ -72,6 +73,7 @@ class _ApoiadorAtendimentosPageState extends State<ApoiadorAtendimentosPage> {
   Widget build(BuildContext context) {
     final pendentes = _items.where((it) => it['status'] == 'PENDENTE').toList();
     final meusAtivos = _items.where((it) => it['status'] == 'EM_ANDAMENTO' && it['apoiadorId']?.toString() == _userId).toList();
+    final meusConcluidos = _items.where((it) => it['status'] == 'CONCLUIDO' && it['apoiadorId']?.toString() == _userId).toList();
 
     return Scaffold(
       appBar: AppBar(
@@ -111,6 +113,29 @@ class _ApoiadorAtendimentosPageState extends State<ApoiadorAtendimentosPage> {
                             title: Text('Atendimento ${it['id'] ?? ''}'),
                             subtitle: Text(it['descricaoInicial']?.toString() ?? ''),
                             trailing: ElevatedButton(onPressed: () => _concluirAtendimento(it['id'].toString()), child: const Text('Concluir')),
+                            onTap: () => Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => ChatPage(api: widget.api, atendimentoId: it['id'].toString()),
+                              ),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                      const SizedBox(height: 16),
+                      const Text('Meus Atendimentos Concluídos', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 8),
+                      ...meusConcluidos.map((item) {
+                        final it = item as Map<String, dynamic>;
+                        return Card(
+                          child: ListTile(
+                            title: Text('Atendimento ${it['id'] ?? ''}'),
+                            subtitle: Text(it['descricaoInicial']?.toString() ?? ''),
+                            trailing: const Icon(Icons.chat_bubble_outline),
+                            onTap: () => Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => ChatPage(api: widget.api, atendimentoId: it['id'].toString()),
+                              ),
+                            ),
                           ),
                         );
                       }).toList(),
