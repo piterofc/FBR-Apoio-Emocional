@@ -37,7 +37,7 @@ export const atendimentoResponseSchema = {
 }
 
 export const createBodySchema = z.object({
-    descricaoInicial: z.string(),
+    descricaoInicial: z.string().trim().min(1, 'Descrição inicial é obrigatória'),
 })
 
 export const createResponseSchema = {
@@ -50,7 +50,7 @@ export const createResponseSchema = {
 }
 
 export const updateBodySchema = z.object({
-    descricaoInicial: z.string().optional(),
+    descricaoInicial: z.string().trim().min(1, 'Descrição inicial não pode ficar vazia').optional(),
     status: statusAtendimentoSchema.optional(),
 })
 

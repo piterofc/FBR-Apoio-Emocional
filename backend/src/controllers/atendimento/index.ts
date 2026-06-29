@@ -1,24 +1,65 @@
 import { db } from '../../db/connection'
 import { atendimentos } from '../../db/schema/atendimento'
 
-import { eq } from 'drizzle-orm'
+import { desc, eq } from 'drizzle-orm'
 import publishEvent from '@/services/eventProducer'
 import { mensagens } from '@/db/schema/mensagem'
 import type { FastifyReply, FastifyRequest } from 'fastify'
 
+async function enrichAtendimento(atendimento: any) {
+    if (!atendimento) return atendimento
+
+    const [cliente, apoiador] = await Promise.all([
+        db.query.users.findFirst({
+            where: (u) => eq(u.id, atendimento.clienteId),
+            columns: { id: true, nickname: true, email: true },
+        }),
+        atendimento.apoiadorId
+            ? db.query.users.findFirst({
+                  where: (u) => eq(u.id, atendimento.apoiadorId),
+                  columns: { id: true, nickname: true, email: true },
+              })
+            : Promise.resolve(null),
+    ])
+
+    return {
+        ...atendimento,
+        cliente,
+        apoiador,
+    }
+}
+
+async function enrichMensagem(mensagem: any) {
+    if (!mensagem) return mensagem
+
+    const user = await db.query.users.findFirst({
+        where: (u) => eq(u.id, mensagem.userId),
+        columns: { id: true, nickname: true, email: true },
+    })
+
+    return {
+        ...mensagem,
+        user,
+    }
+}
+
 export async function listarAtendimentos(req: FastifyRequest, reply: FastifyReply) {
     try {
         const lista = await db.query.atendimentos.findMany({
+            orderBy: (a, { desc }) => [desc(a.createdAt)],
             columns: {
                 id: true,
                 clienteId: true,
                 apoiadorId: true,
+                descricaoInicial: true,
                 status: true,
                 createdAt: true,
                 updatedAt: true,
             },
         })
-        return reply.status(200).send(lista)
+
+        const enriched = await Promise.all(lista.map(enrichAtendimento))
+        return reply.status(200).send(enriched)
     } catch (error) {
         console.error(error)
         return reply.status(500).send({ message: "Erro ao listar atendimentos" })
@@ -30,16 +71,18 @@ export async function obterAtendimento(req: FastifyRequest, reply: FastifyReply)
         const { id } = req.params as { id: string }
         const atendimento = await db.query.atendimentos.findFirst({
             where: (a) => eq(a.id, id),
+            orderBy: (a, { desc }) => [desc(a.createdAt)],
             columns: {
                 id: true,
                 clienteId: true,
                 apoiadorId: true,
+                descricaoInicial: true,
                 status: true,
                 createdAt: true,
                 updatedAt: true,
             },
         })
-        return reply.status(200).send(atendimento)
+        return reply.status(200).send(await enrichAtendimento(atendimento))
     } catch (error) {
         console.error(error)
         return reply.status(500).send({ message: "Erro ao obter atendimento" })
@@ -49,9 +92,13 @@ export async function obterAtendimento(req: FastifyRequest, reply: FastifyReply)
 export async function criarAtendimento(req: FastifyRequest, reply: FastifyReply) {
     try {
         const { descricaoInicial } = req.body as { descricaoInicial: string }
+        const descricaoLimpa = descricaoInicial.trim()
+        if (!descricaoLimpa) {
+            return reply.status(400).send({ message: 'Descrição inicial é obrigatória' })
+        }
         const novoAtendimento = await db.insert(atendimentos).values({
-            clienteId: req.user?.id || '', // Supondo que o ID do cliente esteja disponível no objeto de usuário
-            descricaoInicial,
+            clienteId: req.user?.id || '',
+            descricaoInicial: descricaoLimpa,
             status: 'PENDENTE', // Status inicial do atendimento
         }).returning();
         return reply.status(201).send({ atendimento: novoAtendimento[0] })
@@ -138,7 +185,8 @@ export async function listarMensagens(req: FastifyRequest, reply: FastifyReply) 
                 createdAt: true,
             },
         })
-        return reply.status(200).send(msgs)
+        const enriched = await Promise.all(msgs.map(enrichMensagem))
+        return reply.status(200).send(enriched)
     } catch (error) {
         console.error(error)
         return reply.status(500).send({ message: "Erro ao listar mensagens" })

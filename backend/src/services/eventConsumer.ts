@@ -3,6 +3,13 @@ import { db } from '@/db/connection'
 import { atendimentos } from '@/db/schema/atendimento'
 import { eq } from 'drizzle-orm'
 
+async function getUserSummary(userId: string) {
+  return db.query.users.findFirst({
+    where: (u) => eq(u.id, userId),
+    columns: { id: true, nickname: true, email: true },
+  })
+}
+
 const STATUS_QUEUE = 'status'
 const CHAT_QUEUE = 'chat'
 
@@ -89,10 +96,12 @@ export async function startConsumers() {
         try {
           const { broadcastToRoom } = await import('@/services/ws')
           const inserted = result[0]
+          const user = await getUserSummary(userId)
           broadcastToRoom(atendimentoId, {
             id: inserted.id,
             atendimentoId: inserted.atendimentoId,
             userId: inserted.userId,
+            user,
             mensagem: inserted.mensagem,
             createdAt: inserted.createdAt,
           })
