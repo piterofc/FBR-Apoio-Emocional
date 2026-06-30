@@ -15,3 +15,7 @@
 
 ## Sprint 4
 - Link do vídeo: https://www.youtube.com/watch?v=HwzMqZ68Pes
+
+## Observações extras
+- A demonstração do RabbitMQ está no vídeo da sprint 2
+- O chat usa websocket para atualização do chat em tempo real, e busca o histórico de mensagens do chat direto da API
